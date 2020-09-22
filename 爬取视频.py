@@ -26,6 +26,7 @@ class M3u8_Requests():
 
     retry(stop_max_attempt_number=3)
     def url_get(self):
+        """获取url"""
         base_url = "http://tingshen.court.gov.cn/video"
         self.browser = webdriver.Chrome()
         self.wait = WebDriverWait(self.browser, 10, 0.1)
@@ -41,11 +42,18 @@ class M3u8_Requests():
             url = self.wait.until(EC.element_to_be_clickable((By.XPATH,f'//*[@id="case_list"]/li[{i}]/div[2]/div[1]/a[2]')))
             url.click()
             self.browser.switch_to.window(self.browser.window_handles[1])
-            frame = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="wrapper"]/div[4]/div[2]/div[1]/iframe')))
-            self.browser.execute_script("window.stop()")
-            m3u8 = frame.get_attribute("src")
-            print(m3u8)
-            lis.append(m3u8)
+
+            mp4 = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="index_player_html5_api"]/source')))
+            if mp4:
+                mp4 = mp4.get_attribute("src")
+                print(mp4)
+                lis.append(mp4)
+            else:
+                frame = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="wrapper"]/div[4]/div[2]/div[1]/iframe')))
+                self.browser.execute_script("window.stop()")
+                m3u8 = frame.get_attribute("src")
+                print(m3u8)
+                lis.append(m3u8)
             self.browser.close()
             self.browser.switch_to.window(self.browser.window_handles[0])
         for i in range(1,self.page * 15):
@@ -56,11 +64,19 @@ class M3u8_Requests():
                 pass
             self.browser.switch_to.window(self.browser.window_handles[1])
             try:
-                frame = self.wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="wrapper"]/div[4]/div[2]/div[1]/iframe')))
-                self.browser.execute_script("window.stop()")
-                m3u8 = frame.get_attribute("src")
-                print(m3u8)
-                lis.append(m3u8)
+                mp4 = self.wait.until(
+                    EC.presence_of_element_located((By.XPATH, '//*[@id="index_player_html5_api"]/source')))
+                if mp4:
+                    mp4 = mp4.get_attribute("src")
+                    print(mp4)
+                    lis.append(mp4)
+                else:
+                    frame = self.wait.until(
+                        EC.presence_of_element_located((By.XPATH, '//*[@id="wrapper"]/div[4]/div[2]/div[1]/iframe')))
+                    self.browser.execute_script("window.stop()")
+                    m3u8 = frame.get_attribute("src")
+                    print(m3u8)
+                    lis.append(m3u8)
             except:
                 self.browser.refresh()
                 try:
@@ -77,8 +93,10 @@ class M3u8_Requests():
             for i in lis:
                 f.write(i+"\n")
         self.browser.quit()
+
     @retry(stop_max_attempt_number=3)
     def ffmpeg_m3u8(self,url):
+        """m3u8文件格式的视频下载"""
         global m3u8
         url = url.strip("\n")
         r = requests.get(url)
@@ -89,18 +107,38 @@ class M3u8_Requests():
             test_lis.append(m3u8)
         except:
             print(f"失败的url为{url}")
-        print(f"一共{len(test_lis)}个m3u8")
+        #print(f"一共{len(test_lis)}个m3u8")
         file = self.path + "\\" + m3u8.split("/")[-1]
-        m(m3u8,file)
+        try:
+            m(m3u8,file)
+        except:
+            pass
         #os.system(f"m3_dl {m3u8} -o {file}")
         print("下载成功>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    def mp4_download(self,url):
+        r = requests.get(url)
+
+        name = url.split(".")[0].split("/")[-1]
+        if r.status_code == 200:
+            with open(self.path + "\\{number}.mp4".format(number=number), "wb")as f:
+                f.write(r.content)
+        print("写入完成>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     def main(self):
-        self.url_get()
-        with open(self.path+ r"\\url.txt", "r+")as f:
+        #self.url_get()
+        with open(r"J:\PyCharm项目\项目\各种爬虫\爬虫实例\crawler_movie\庭审直播\09-20185819\\url.txt", "r+")as f:
             urls = f.readlines()
             print(f"一共{len(urls)}个url")
+        mp4,m3u8=[],[]
+        for url in urls:
+            if ".mp4" in url:
+                mp4.append(url)
+            else:
+                m3u8.append(url)
+
         try:
-            tp(10,self.ffmpeg_m3u8,urls).concurrent_Thread_package()
+            tp(10,self.ffmpeg_m3u8,m3u8).concurrent_Thread_package()
+            tp(10, self.mp4_download, mp4).concurrent_Thread_package()
+
         except:
             pass
 if __name__ =="__main__":
