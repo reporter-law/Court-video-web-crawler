@@ -170,7 +170,8 @@ class M3u8Download:
         """
         合并.ts文件，输出mp4格式视频，需要ffmpeg
         """
-        cmd = f"ffmpeg -allowed_extensions ALL -i {self.name}.m3u8 -acodec copy -vcodec copy -f mp4 {self.name}.mp4"
+        #-loglevel quiet,控制台不输出
+        cmd = f"ffmpeg -loglevel quiet -allowed_extensions ALL -i {self.name}.m3u8 -acodec copy -vcodec copy -f mp4 {self.name}.mp4"
         os.system(cmd)
         os.remove(self.name+'.m3u8')
         shutil.rmtree(self.name)
@@ -186,8 +187,8 @@ def main(url,name):
     for i in range(len(url_list)):
         M3u8Download(url_list[i],
                      name_list[i] if len(url_list) == len(name_list) else f"{name_list[0]}{start_num:02}",
-                     max_workers=128,
-                     num_retries=10
+                     max_workers=64,
+                     num_retries=20
                      )
         start_num += 1
 #main("http://218.31.175.188:1126/trials/2020_year/09_month/16_day/5793BDB1_EDB5_E813_708A_3FC974E352DE/C2719892_20F0_4A7D_61B7_BA93307E0826/AE7CA7C8_37F2_5E43_32F9_D13D9DD6B2CAvod.m3u8","J://test//sss")
